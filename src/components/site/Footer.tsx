@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/Logo";
 
 export function Footer() {
@@ -18,13 +19,18 @@ export function Footer() {
         <div>
           <h4 className="text-sm font-semibold mb-3">Product</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>Features</li><li>Pricing</li><li>API</li><li>Changelog</li>
+            <li><Link to="/" className="hover:text-foreground transition-colors">Home</Link></li>
+            <li><Link to="/" className="hover:text-foreground transition-colors">Pricing</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="text-sm font-semibold mb-3">Company</h4>
+          <h4 className="text-sm font-semibold mb-3">Legal & Support</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li>About</li><li>Privacy</li><li>Terms</li><li>Contact</li>
+            <li><Link to="/privacy-policy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+            <li><Link to="/terms-conditions" className="hover:text-foreground transition-colors">Terms & Conditions</Link></li>
+            <li><Link to="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link></li>
+            <li><Link to="/shipping-delivery" className="hover:text-foreground transition-colors">Shipping & Delivery</Link></li>
+            <li><Link to="/contact-us" className="hover:text-foreground transition-colors">Contact Us</Link></li>
           </ul>
         </div>
       </div>

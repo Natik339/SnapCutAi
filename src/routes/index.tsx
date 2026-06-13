@@ -54,7 +54,15 @@ function Landing() {
     const savedHistory = localStorage.getItem(HISTORY_KEY);
     if (savedHistory) {
       try {
-        setHistory(JSON.parse(savedHistory));
+        const parsedHistory: HistoryItem[] = JSON.parse(savedHistory);
+        const secureHistory = parsedHistory.map(item => {
+          let secureProcessedUrl = item.processedUrl;
+          if (secureProcessedUrl.startsWith('http://')) {
+            secureProcessedUrl = secureProcessedUrl.replace('http://', 'https://');
+          }
+          return { ...item, processedUrl: secureProcessedUrl };
+        });
+        setHistory(secureHistory);
       } catch (e) {
         console.error("Failed to parse history from localStorage", e);
       }
@@ -84,7 +92,11 @@ function Landing() {
   // Download image
   const downloadImage = async (url: string, filename: string = 'removed-bg.png') => {
     try {
-      const response = await fetch(url);
+      let secureUrl = url;
+      if (secureUrl.startsWith('http://')) {
+        secureUrl = secureUrl.replace('http://', 'https://');
+      }
+      const response = await fetch(secureUrl);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -96,9 +108,61 @@ function Landing() {
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error("Download failed:", error);
-      // Fallback: open in new tab
-      window.open(url, '_blank');
+      let secureUrl = url;
+      if (secureUrl.startsWith('http://')) {
+        secureUrl = secureUrl.replace('http://', 'https://');
+      }
+      window.open(secureUrl, '_blank');
     }
+  };
+
+  // Load Razorpay Script
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    document.body.appendChild(script);
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // Handle Razorpay Checkout
+  const handlePurchase = async (amount: number) => {
+    if (!razorpayLoaded || !window.Razorpay) {
+      alert('Razorpay SDK is loading. Please try again in a moment.');
+      return;
+    }
+
+    const options = {
+      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T1ATrVxQVLScv1', // Use env var, fallback to test key
+      amount: amount,
+      currency: 'INR',
+      name: 'SnapCut AI',
+      description: 'Pro Plan Subscription',
+      image: '/snapcut-logo.png',
+      handler: function (response: any) {
+        alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
+        // Here you would verify the payment on your backend
+      },
+      prefill: {
+        name: 'Your Name',
+        email: 'your.email@example.com',
+        contact: '9999999999'
+      },
+      notes: {
+        'address': 'SnapCut AI Office'
+      },
+      theme: {
+        color: '#0ea5e9'
+      }
+    };
+
+    const razorpayInstance = new (window as any).Razorpay(options);
+    razorpayInstance.open();
   };
 
   return (
@@ -146,7 +210,7 @@ function Landing() {
             <LogoStrip />
             <Features />
             <HowItWorks />
-            <Pricing />
+            <Pricing onPurchase={handlePurchase} />
             <CTA />
           </>
         ) : (
@@ -218,12 +282,16 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
       // Get processed image URL from JSON response
       const result = await response.json();
       if (result.url) {
-        setProcessedImage(result.url);
+        let secureUrl = result.url;
+        if (secureUrl.startsWith('http://')) {
+          secureUrl = secureUrl.replace('http://', 'https://');
+        }
+        setProcessedImage(secureUrl);
         // Add to history
         if (uploadedImage) {
           addToHistory({
             originalUrl: uploadedImage,
-            processedUrl: result.url
+            processedUrl: secureUrl
           });
         }
       } else {
@@ -550,12 +618,12 @@ function HowItWorks() {
 }
 
 const plans = [
-  { name: "Free", price: "$0", cadence: "forever", features: ["5 images / day", "Up to 2K resolution", "Standard queue", "Community support"], cta: "Start free" },
-  { name: "Pro", price: "$19", cadence: "per month", features: ["Unlimited images", "Up to 5K resolution", "Priority processing", "Email support"], cta: "Go Pro", highlight: true },
-  { name: "API / Business", price: "Custom", cadence: "talk to us", features: ["REST API access", "API keys + rate limits", "SLA + analytics", "Dedicated support"], cta: "Contact sales" },
+  { name: "Free", price: "₹0", cadence: "forever", features: ["5 images / day", "Up to 2K resolution", "Standard queue", "Community support"], cta: "Start free", amount: 0 },
+  { name: "Pro", price: "₹999", cadence: "per month", features: ["Unlimited images", "Up to 5K resolution", "Priority processing", "Email support"], cta: "Go Pro", highlight: true, amount: 99900 }, // 999 INR in paise
+  { name: "API / Business", price: "Custom", cadence: "talk to us", features: ["REST API access", "API keys + rate limits", "SLA + analytics", "Dedicated support"], cta: "Contact sales", amount: 0 },
 ];
 
-function Pricing() {
+function Pricing({ onPurchase }: { onPurchase: (amount: number) => void }) {
   return (
     <section className="mx-auto max-w-7xl px-6 mt-32">
       <div className="text-center max-w-2xl mx-auto">
@@ -581,9 +649,18 @@ function Pricing() {
                 </li>
               ))}
             </ul>
-            <Button className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`}>
-              {p.cta}
-            </Button>
+            {p.amount > 0 ? (
+              <Button 
+                onClick={() => onPurchase(p.amount)} 
+                className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`}
+              >
+                {p.cta}
+              </Button>
+            ) : (
+              <Button className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`}>
+                {p.cta}
+              </Button>
+            )}
           </div>
         ))}
       </div>
