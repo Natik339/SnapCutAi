@@ -6,8 +6,8 @@ import { Mail, Phone, MapPin } from "lucide-react";
 export const Route = createFileRoute("/contact-us")({
   head: () => ({
     meta: [
-      { title: "Contact Us | SnapCut AI" },
-      { name: "description", content: "Get in touch with SnapCut AI - Contact information, support, and more" },
+      { title: "Contact Us | SnapCut" },
+      { name: "description", content: "Get in touch with SnapCut - Contact information, support, and more" },
     ],
   }),
   component: ContactUsPage,
@@ -45,7 +45,7 @@ function ContactUsPage() {
               <div>
                 <h3 className="font-semibold">Address</h3>
                 <p className="text-muted-foreground">
-                  SnapCut AI<br />
+                  SnapCut<br />
                   123 Tech Park, Electronic City<br />
                   Bangalore, Karnataka, 560100<br />
                   India
@@ -56,7 +56,7 @@ function ContactUsPage() {
 
           <div className="bg-muted/30 p-6 rounded-2xl border border-border">
             <h3 className="text-xl font-semibold mb-4">Business Details</h3>
-            <p className="mb-2"><span className="font-semibold">Trade Name:</span> SnapCut AI</p>
+            <p className="mb-2"><span className="font-semibold">Trade Name:</span> SnapCut</p>
             <p className="mb-2"><span className="font-semibold">Business Type:</span> Software as a Service (SaaS)</p>
             <p className="mb-2"><span className="font-semibold">Support Hours:</span> 9:00 AM - 6:00 PM IST, Mon-Sat</p>
           </div>

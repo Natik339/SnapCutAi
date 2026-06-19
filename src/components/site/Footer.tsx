@@ -8,9 +8,7 @@ export function Footer() {
         <div className="md:col-span-2">
           <div className="flex items-center gap-3">
             <Logo className="h-10 w-10" />
-            <span className="font-display text-lg font-bold">
-              SnapCut <span className="text-brand-gradient">AI</span>
-            </span>
+            <span className="font-display text-lg font-bold text-brand-gradient">SnapCut</span>
           </div>
           <p className="mt-3 max-w-sm text-sm text-muted-foreground">
             One click. Remove background. Pixel-perfect AI cutouts in under 5 seconds.
@@ -20,7 +18,7 @@ export function Footer() {
           <h4 className="text-sm font-semibold mb-3">Product</h4>
           <ul className="space-y-2 text-sm text-muted-foreground">
             <li><Link to="/" className="hover:text-foreground transition-colors">Home</Link></li>
-            <li><Link to="/" className="hover:text-foreground transition-colors">Pricing</Link></li>
+            <li><a href="/#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
           </ul>
         </div>
         <div>
@@ -35,7 +33,7 @@ export function Footer() {
         </div>
       </div>
       <div className="border-t border-border/40 py-5 text-center text-xs text-muted-foreground">
-        © {new Date().getFullYear()} SnapCut AI. All rights reserved.
+        © {new Date().getFullYear()} SnapCut. All rights reserved.
       </div>
     </footer>
   );

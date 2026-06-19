@@ -1,9 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/Logo";
 import { ImageUploader } from "@/components/ImageUploader";
+import {
+  AuthRequiredDialog,
+  PurchaseSuccessDialog,
+  UpgradeDialog,
+} from "@/components/UpgradeFlowDialogs";
 import { 
   Upload, 
   Sparkles, 
@@ -15,29 +20,27 @@ import {
   CheckCircle2,
   Clock,
   Download,
-  Trash2,
   Home,
-  History
+  History,
+  Lock,
+  AlertCircle,
+  CreditCard
 } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/auth";
+import { useHistory } from "@/hooks/useHistory";
+import { HistoryGrid } from "@/components/HistoryGrid";
+import { downloadImage, getHistoryItemName } from "@/lib/history-utils";
+import { getBackgroundRemovalWebhookUrl } from "@/lib/public-config";
+import type { HistoryInsert } from "@/types/history";
 
-// TypeScript interface for history items
-interface HistoryItem {
-  id: string;
-  originalUrl: string;
-  processedUrl: string;
-  timestamp: number;
-}
-
-// localStorage keys
-const HISTORY_KEY = "bg-remover-history";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SnapCut AI — One Click. Remove Background." },
+      { title: "SnapCut — One Click. Remove Background." },
       { name: "description", content: "AI-powered background removal in under 5 seconds. Pixel-perfect cutouts for creators, e-commerce, and developers." },
-      { property: "og:title", content: "SnapCut AI — One Click. Remove Background." },
+      { property: "og:title", content: "SnapCut — One Click. Remove Background." },
       { property: "og:description", content: "Pixel-perfect AI background removal in under 5 seconds." },
     ],
   }),
@@ -46,123 +49,20 @@ export const Route = createFileRoute("/")({
 
 function Landing() {
   const [activeTab, setActiveTab] = useState<'home' | 'history'>('home');
-  
-  // Load history from localStorage
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-  
-  useEffect(() => {
-    const savedHistory = localStorage.getItem(HISTORY_KEY);
-    if (savedHistory) {
-      try {
-        const parsedHistory: HistoryItem[] = JSON.parse(savedHistory);
-        const secureHistory = parsedHistory.map(item => {
-          let secureProcessedUrl = item.processedUrl;
-          if (secureProcessedUrl.startsWith('http://')) {
-            secureProcessedUrl = secureProcessedUrl.replace('http://', 'https://');
-          }
-          return { ...item, processedUrl: secureProcessedUrl };
-        });
-        setHistory(secureHistory);
-      } catch (e) {
-        console.error("Failed to parse history from localStorage", e);
-      }
-    }
-  }, []);
-
-  // Save history to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
-  }, [history]);
-
-  // Add item to history
-  const addToHistory = (item: Omit<HistoryItem, 'id' | 'timestamp'>) => {
-    const newItem: HistoryItem = {
-      ...item,
-      id: Date.now().toString(),
-      timestamp: Date.now()
-    };
-    setHistory(prev => [newItem, ...prev]);
-  };
-
-  // Delete item from history
-  const deleteFromHistory = (id: string) => {
-    setHistory(prev => prev.filter(item => item.id !== id));
-  };
-
-  // Download image
-  const downloadImage = async (url: string, filename: string = 'removed-bg.png') => {
-    try {
-      let secureUrl = url;
-      if (secureUrl.startsWith('http://')) {
-        secureUrl = secureUrl.replace('http://', 'https://');
-      }
-      const response = await fetch(secureUrl);
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error("Download failed:", error);
-      let secureUrl = url;
-      if (secureUrl.startsWith('http://')) {
-        secureUrl = secureUrl.replace('http://', 'https://');
-      }
-      window.open(secureUrl, '_blank');
-    }
-  };
-
-  // Load Razorpay Script
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
-
-  useEffect(() => {
-    const script = document.createElement('script');
-    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    script.async = true;
-    script.onload = () => setRazorpayLoaded(true);
-    document.body.appendChild(script);
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
+  const [purchaseSuccessId, setPurchaseSuccessId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { history, isLoading, addToHistory, deleteFromHistory, renameHistoryItem, incrementDownloadCount } = useHistory();
 
   // Handle Razorpay Checkout
-  const handlePurchase = async (amount: number) => {
-    if (!razorpayLoaded || !window.Razorpay) {
-      alert('Razorpay SDK is loading. Please try again in a moment.');
+  const handlePurchase = async (_amount: number) => {
+    if (!user) {
+      setIsAuthDialogOpen(true);
       return;
     }
 
-    const options = {
-      key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_T1ATrVxQVLScv1', // Use env var, fallback to test key
-      amount: amount,
-      currency: 'INR',
-      name: 'SnapCut AI',
-      description: 'Pro Plan Subscription',
-      image: '/snapcut-logo.png',
-      handler: function (response: any) {
-        alert(`Payment Successful! Payment ID: ${response.razorpay_payment_id}`);
-        // Here you would verify the payment on your backend
-      },
-      prefill: {
-        name: 'Your Name',
-        email: 'your.email@example.com',
-        contact: '9999999999'
-      },
-      notes: {
-        'address': 'SnapCut AI Office'
-      },
-      theme: {
-        color: '#0ea5e9'
-      }
-    };
-
-    const razorpayInstance = new (window as any).Razorpay(options);
-    razorpayInstance.open();
+    setIsUpgradeDialogOpen(true);
   };
 
   return (
@@ -206,6 +106,7 @@ function Landing() {
             <Hero 
               addToHistory={addToHistory} 
               downloadImage={downloadImage}
+              incrementDownloadCount={incrementDownloadCount}
             />
             <LogoStrip />
             <Features />
@@ -214,28 +115,82 @@ function Landing() {
             <CTA />
           </>
         ) : (
-          <HistoryView 
-            history={history} 
-            deleteFromHistory={deleteFromHistory}
-            downloadImage={downloadImage}
+          <HistoryGrid
+            history={history}
+            onDelete={deleteFromHistory}
+            onRename={renameHistoryItem}
+            onDownload={incrementDownloadCount}
+            isLoading={isLoading}
           />
         )}
       </main>
       <Footer />
+      <AuthRequiredDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+      <UpgradeDialog
+        open={isUpgradeDialogOpen}
+        onOpenChange={setIsUpgradeDialogOpen}
+        onRequireAuth={() => setIsAuthDialogOpen(true)}
+        onSuccess={(paymentId) => setPurchaseSuccessId(paymentId)}
+        entryPoint="home"
+      />
+      <PurchaseSuccessDialog
+        open={Boolean(purchaseSuccessId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPurchaseSuccessId(null);
+          }
+        }}
+        paymentId={purchaseSuccessId}
+      />
     </div>
   );
 }
 
 interface HeroProps {
-  addToHistory: (item: Omit<HistoryItem, 'id' | 'timestamp'>) => void;
-  downloadImage: (url: string, filename?: string) => void;
+  addToHistory: (item: HistoryInsert) => Promise<unknown>;
+  downloadImage: (url: string, filename?: string) => Promise<void>;
+  incrementDownloadCount: (id: string) => Promise<unknown>;
 }
 
-function Hero({ addToHistory, downloadImage }: HeroProps) {
+function Hero({ addToHistory, downloadImage, incrementDownloadCount }: HeroProps) {
   const [isUploaderOpen, setIsUploaderOpen] = useState(false);
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [processedImage, setProcessedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [generationTime, setGenerationTime] = useState<number>(0);
+  const [lastHistoryId, setLastHistoryId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const { user, profile, refreshProfile, isLoading: authLoading } = useAuth();
+  const processableImagesLeft =
+    profile?.plan === 'pro' && profile?.pro_expires_at && new Date(profile.pro_expires_at) > new Date()
+      ? null
+      : Math.max(0, profile?.credits ?? 0);
+
+  // Check if user can use credits
+  const canUseCredit = () => {
+    console.log('[Hero] canUseCredit - user:', user?.id, 'profile:', profile)
+    if (!user) return false;
+    if (!profile) return false;
+    
+    // Pro users have unlimited
+    if (profile.plan === 'pro' && profile.pro_expires_at) {
+      const expiryDate = new Date(profile.pro_expires_at);
+      if (expiryDate > new Date()) {
+        return true;
+      }
+    }
+    
+    // Free users need credits
+    return (profile.credits || 0) > 0;
+  };
+
+  // Log profile changes for debugging
+  useEffect(() => {
+    if (user) {
+      console.log('[Hero] user logged in:', user.id)
+      console.log('[Hero] profile on mount/update:', profile)
+    }
+  }, [user, profile])
 
   // Helper: Convert data URL to Blob
   const dataURLtoBlob = (dataurl: string) => {
@@ -252,10 +207,34 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
     return new Blob([u8arr], { type: mime });
   };
 
+  // Handle download with increment
+  const handleDownload = async () => {
+    if (!processedImage) return;
+    await downloadImage(processedImage, getHistoryItemName({ fileName: 'removed-bg.png' } as any));
+    if (lastHistoryId) {
+      await incrementDownloadCount(lastHistoryId);
+    }
+  };
+
   // Background removal with webhook
   const handleRemoveBackground = async () => {
     if (!uploadedImage) return;
+    
+    // Check authentication
+    if (!user) {
+      setError('Please login to remove backgrounds');
+      return;
+    }
+
+    // Check credits
+    if (!canUseCredit()) {
+      setError('You have no credits left. Please upgrade to Pro.');
+      return;
+    }
+
+    setError(null);
     setIsProcessing(true);
+    const requestStartedAt = Date.now();
 
     try {
       // Convert data URL to binary blob
@@ -266,14 +245,25 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
       const formData = new FormData();
       formData.append("image", imageBlob, "image.png");
 
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+      const backgroundRemovalWebhookUrl = getBackgroundRemovalWebhookUrl();
+
+      if (!backgroundRemovalWebhookUrl) {
+        throw new Error("Background removal webhook is not configured.");
+      }
+
       // Send to webhook
-      const response = await fetch(
-        "https://natikg16.app.n8n.cloud/webhook/remove-background",
-        {
+      let response: Response;
+      try {
+        response = await fetch(backgroundRemovalWebhookUrl, {
           method: "POST",
           body: formData,
-        }
-      );
+          signal: controller.signal,
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
 
       if (!response.ok) {
         throw new Error(`Webhook failed: ${response.status}`);
@@ -286,26 +276,109 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
         if (secureUrl.startsWith('http://')) {
           secureUrl = secureUrl.replace('http://', 'https://');
         }
+        
+        const genTime = Date.now() - requestStartedAt;
+        setGenerationTime(genTime);
         setProcessedImage(secureUrl);
+        
+        // Use credit
+        try {
+          const { useCredit } = await import('@/lib/supabase-utils');
+          const creditResult = await useCredit(user.id);
+          console.log('[Hero] creditResult after useCredit', creditResult)
+          if (!creditResult.success) {
+            setError('Failed to use credit');
+          } else {
+            await refreshProfile();
+          }
+        } catch (err) {
+          console.error('Failed to use credit:', err);
+        }
+        
         // Add to history
         if (uploadedImage) {
-          addToHistory({
+          const historyItem = await addToHistory({
             originalUrl: uploadedImage,
-            processedUrl: secureUrl
+            processedUrl: secureUrl,
+            fileName: 'removed-bg.png',
+            generationTimeMs: genTime
           });
+          setLastHistoryId((historyItem as any).id);
         }
       } else {
         throw new Error("No URL in webhook response");
       }
     } catch (error) {
       console.error("Error removing background:", error);
-      // Fallback for demo purposes
-      setProcessedImage(uploadedImage);
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setError("Background removal timed out. Please try again.");
+      } else {
+        setError(error instanceof Error ? error.message : "Failed to remove background");
+      }
     } finally {
       // Always set processing to false when done
       setIsProcessing(false);
     }
   };
+
+  // If not logged in, show auth prompt
+  if (!user) {
+    return (
+      <>
+        <ImageUploader 
+          isOpen={isUploaderOpen} 
+          onClose={() => setIsUploaderOpen(false)} 
+          onImageSelect={(imageUrl: string) => {
+            setUploadedImage(imageUrl);
+            setProcessedImage(null);
+          }}
+        />
+        <section className="relative overflow-hidden">
+          <div className="absolute inset-0 -z-10">
+            <div className="absolute top-20 left-1/2 -translate-x-1/2 h-[500px] w-[800px] rounded-full bg-primary/20 blur-[120px]" />
+            <div className="absolute top-40 right-10 h-[300px] w-[300px] rounded-full bg-accent/25 blur-[100px]" />
+          </div>
+          <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-secondary" />
+              Powered by next-gen segmentation AI
+            </div>
+            <h1 className="mt-6 text-5xl sm:text-6xl md:text-7xl font-bold leading-[1.05]">
+              Remove backgrounds.
+              <br />
+              <span className="text-brand-gradient">In one click.</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+              SnapCut delivers studio-grade cutouts in under 5 seconds. Built for creators,
+              e-commerce teams, and developers shipping at scale.
+            </p>
+            
+            <div className="mt-9 flex flex-col items-center gap-4">
+              <div className="glass p-6 rounded-2xl max-w-md mx-auto flex items-center gap-4">
+                <Lock className="w-8 h-8 text-cyan-400" />
+                <div className="text-left">
+                  <p className="font-semibold text-foreground">Authentication Required</p>
+                  <p className="text-sm text-muted-foreground">Please login or create an account to remove backgrounds</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <Button asChild size="lg" className="bg-brand-gradient text-primary-foreground border-0 shadow-glow hover:opacity-95 h-12 px-7 text-base">
+                  <Link to="/login">
+                    Login
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="h-12 px-7 text-base">
+                  <Link to="/signup">
+                    Create Account
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </>
+    );
+  }
 
   return (
     <>
@@ -315,6 +388,7 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
         onImageSelect={(imageUrl: string) => {
           setUploadedImage(imageUrl);
           setProcessedImage(null);
+          setError(null);
         }}
       />
       <section className="relative overflow-hidden">
@@ -323,6 +397,23 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
           <div className="absolute top-40 right-10 h-[300px] w-[300px] rounded-full bg-accent/25 blur-[100px]" />
         </div>
         <div className="mx-auto max-w-7xl px-6 pt-20 pb-24 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs text-muted-foreground mb-4">
+            <CreditCard className="h-3.5 w-3.5 text-cyan-400" />
+            {profile?.plan === 'pro' && profile?.pro_expires_at && new Date(profile.pro_expires_at) > new Date() ? (
+              <span>Pro Plan - Unlimited Credits</span>
+            ) : authLoading || !profile ? (
+              <span>Loading credits...</span>
+            ) : (
+              <span>Free Plan - {profile.credits} Credits Remaining</span>
+            )}
+          </div>
+          <div className="mx-auto mb-4 max-w-2xl rounded-2xl bg-white/[0.03] px-5 py-4 text-sm text-white/90 backdrop-blur-sm">
+            {processableImagesLeft === null ? (
+              <span>Your current plan gives you up to 10 monthly credits to process images.</span>
+            ) : (
+              <span>You can process {processableImagesLeft} more image{processableImagesLeft === 1 ? '' : 's'} with {profile?.credits ?? 0} credit{(profile?.credits ?? 0) === 1 ? '' : 's'} left.</span>
+            )}
+          </div>
           <div className="inline-flex items-center gap-2 rounded-full glass px-4 py-1.5 text-xs text-muted-foreground">
             <Sparkles className="h-3.5 w-3.5 text-secondary" />
             Powered by next-gen segmentation AI
@@ -333,9 +424,16 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
             <span className="text-brand-gradient">In one click.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            SnapCut AI delivers studio-grade cutouts in under 5 seconds. Built for creators,
+            SnapCut delivers studio-grade cutouts in under 5 seconds. Built for creators,
             e-commerce teams, and developers shipping at scale.
           </p>
+          
+          {error && (
+            <div className="mt-6 max-w-md mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400" />
+              <p className="text-sm text-red-300">{error}</p>
+            </div>
+          )}
           
           {/* Upload or Remove Background button */}
           <div className="mt-9 flex flex-col sm:flex-row justify-center gap-3">
@@ -353,14 +451,14 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
                   size="lg" 
                   className="bg-brand-gradient text-primary-foreground border-0 shadow-glow hover:opacity-95 h-12 px-7 text-base"
                   onClick={handleRemoveBackground}
-                  disabled={isProcessing}
+                  disabled={isProcessing || !canUseCredit()}
                 >
                   {isProcessing ? (
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
                   ) : (
                     <Wand2 className="mr-2 h-5 w-5" />
                   )}
-                  {isProcessing ? "Processing..." : "Remove Background"}
+                  {isProcessing ? "Processing..." : !canUseCredit() ? "No Credits" : "Remove Background"}
                 </Button>
                 <Button 
                   size="lg" 
@@ -369,6 +467,7 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
                   onClick={() => {
                     setUploadedImage(null);
                     setProcessedImage(null);
+                    setError(null);
                   }}
                 >
                   Upload another
@@ -376,8 +475,10 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
               </>
             )}
             {!uploadedImage && (
-              <Button size="lg" variant="outline" className="h-12 px-7 text-base bg-card/40 border-border/60 hover:bg-card">
-                <Code2 className="mr-2 h-5 w-5" /> View API docs
+              <Button size="lg" variant="outline" className="h-12 px-7 text-base bg-card/40 border-border/60 hover:bg-card" asChild>
+                <Link to="/contact-us">
+                  <Code2 className="mr-2 h-5 w-5" /> View API docs
+                </Link>
               </Button>
             )}
           </div>
@@ -412,12 +513,18 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
                       className="h-full w-full object-contain"
                     />
                     <button
-                      onClick={() => downloadImage(processedImage)}
-                      className="absolute bottom-4 right-4 px-4 py-2 bg-brand-gradient text-primary-foreground rounded-full shadow-glow flex items-center gap-2 hover:opacity-90 transition-opacity"
+                      onClick={handleDownload}
+                      className="absolute bottom-4 right-4 inline-flex items-center gap-2 rounded-full border border-amber-300/30 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-400 px-4 py-2 text-white shadow-lg shadow-fuchsia-950/35 transition-all hover:scale-[1.02] hover:shadow-xl hover:shadow-fuchsia-950/45"
                     >
                       <Download className="w-4 h-4" />
                       Download
                     </button>
+                    {generationTime > 0 && (
+                      <div className="absolute top-4 left-4 px-3 py-1 bg-black/50 text-white text-xs rounded-full flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {(generationTime / 1000).toFixed(1)}s
+                      </div>
+                    )}
                   </div>
                 ) : uploadedImage && isProcessing ? (
                   <div className="flex flex-col items-center gap-2 text-white/70">
@@ -435,105 +542,6 @@ function Hero({ addToHistory, downloadImage }: HeroProps) {
       </div>
     </section>
     </>
-  );
-}
-
-// History View Component
-interface HistoryViewProps {
-  history: HistoryItem[];
-  deleteFromHistory: (id: string) => void;
-  downloadImage: (url: string, filename?: string) => void;
-}
-
-function HistoryView({ history, deleteFromHistory, downloadImage }: HistoryViewProps) {
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (history.length === 0) {
-    return (
-      <section className="py-20 px-6 text-center">
-        <div className="max-w-md mx-auto">
-          <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-            <Clock className="w-8 h-8 text-muted-foreground" />
-          </div>
-          <h2 className="text-2xl font-bold mb-2">No History Yet</h2>
-          <p className="text-muted-foreground mb-6">
-            Start removing backgrounds and your edits will appear here.
-          </p>
-        </div>
-      </section>
-    );
-  }
-
-  return (
-    <section className="py-10 px-6">
-      <div className="max-w-6xl mx-auto">
-        <h2 className="text-3xl font-bold mb-8 text-center">Your Background Removals</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {history.map((item) => (
-            <div 
-              key={item.id} 
-              className="glass rounded-2xl overflow-hidden shadow-card hover:shadow-glow transition-all"
-            >
-              <div className="grid grid-cols-2">
-                <div className="relative aspect-square bg-gradient-to-br from-slate-700 to-slate-900">
-                  <div className="absolute top-2 left-2 text-[10px] uppercase tracking-widest text-white/70 bg-black/50 px-2 py-1 rounded-full">Before</div>
-                  <img 
-                    src={item.originalUrl} 
-                    alt="Before" 
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-                <div 
-                  className="relative aspect-square"
-                  style={{ 
-                    backgroundImage: "repeating-conic-gradient(oklch(0.25 0.04 265) 0% 25%, oklch(0.20 0.04 265) 0% 50%)", 
-                    backgroundSize: "20px 20px" 
-                  }}
-                >
-                  <div className="absolute top-2 left-2 text-[10px] uppercase tracking-widest text-white/70 bg-black/50 px-2 py-1 rounded-full">After</div>
-                  <img 
-                    src={item.processedUrl} 
-                    alt="After" 
-                    className="h-full w-full object-cover"
-                  />
-                </div>
-              </div>
-              
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(item.timestamp)}
-                  </span>
-                  <button
-                    onClick={() => deleteFromHistory(item.id)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
-                    title="Delete from history"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-                <button
-                  onClick={() => downloadImage(item.processedUrl, `bg-removed-${item.id}.png`)}
-                  className="w-full py-2 px-4 bg-brand-gradient text-primary-foreground rounded-lg flex items-center justify-center gap-2 hover:opacity-90 transition-opacity"
-                >
-                  <Download className="w-4 h-4" />
-                  Download
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -618,14 +626,14 @@ function HowItWorks() {
 }
 
 const plans = [
-  { name: "Free", price: "₹0", cadence: "forever", features: ["5 images / day", "Up to 2K resolution", "Standard queue", "Community support"], cta: "Start free", amount: 0 },
-  { name: "Pro", price: "₹999", cadence: "per month", features: ["Unlimited images", "Up to 5K resolution", "Priority processing", "Email support"], cta: "Go Pro", highlight: true, amount: 99900 }, // 999 INR in paise
+  { name: "Free", price: "₹0", cadence: "forever", features: ["2 free credits", "Up to 2K resolution", "Standard queue", "Community support"], cta: "Start free", amount: 0 },
+  { name: "Pro", price: "₹999", cadence: "per month", features: ["10 credits/month", "Up to 5K resolution", "Priority processing", "Email support"], cta: "Go Pro", highlight: true, amount: 99900 }, // 999 INR in paise
   { name: "API / Business", price: "Custom", cadence: "talk to us", features: ["REST API access", "API keys + rate limits", "SLA + analytics", "Dedicated support"], cta: "Contact sales", amount: 0 },
 ];
 
 function Pricing({ onPurchase }: { onPurchase: (amount: number) => void }) {
   return (
-    <section className="mx-auto max-w-7xl px-6 mt-32">
+    <section id="pricing" className="mx-auto max-w-7xl px-6 mt-32">
       <div className="text-center max-w-2xl mx-auto">
         <h2 className="text-4xl md:text-5xl font-bold">Simple pricing.<br /><span className="text-brand-gradient">Scale when you're ready.</span></h2>
         <p className="mt-4 text-muted-foreground">Start free. Upgrade when your catalog grows.</p>
@@ -656,9 +664,17 @@ function Pricing({ onPurchase }: { onPurchase: (amount: number) => void }) {
               >
                 {p.cta}
               </Button>
+            ) : p.name === "Free" ? (
+              <Button className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`} asChild>
+                <Link to="/signup">
+                  {p.cta}
+                </Link>
+              </Button>
             ) : (
-              <Button className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`}>
-                {p.cta}
+              <Button className={`mt-7 w-full ${p.highlight ? "bg-brand-gradient text-primary-foreground border-0 shadow-glow" : "bg-card border border-border hover:bg-muted"}`} asChild>
+                <Link to="/contact-us">
+                  {p.cta}
+                </Link>
               </Button>
             )}
           </div>
@@ -676,9 +692,11 @@ function CTA() {
         <div className="relative">
           <Logo className="mx-auto h-16 w-16" />
           <h2 className="mt-5 text-4xl md:text-5xl font-bold text-primary-foreground">Ready to cut the background?</h2>
-          <p className="mt-3 text-primary-foreground/80">Join thousands of creators shipping faster with SnapCut AI.</p>
-          <Button size="lg" className="mt-7 bg-background text-foreground hover:bg-background/90 h-12 px-8 text-base">
-            Start free — no card required
+          <p className="mt-3 text-primary-foreground/80">Join thousands of creators shipping faster with SnapCut.</p>
+          <Button size="lg" className="mt-7 bg-background text-foreground hover:bg-background/90 h-12 px-8 text-base" asChild>
+            <Link to="/signup">
+              Start free — no card required
+            </Link>
           </Button>
         </div>
       </div>

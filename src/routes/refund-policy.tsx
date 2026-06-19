@@ -5,8 +5,8 @@ import { Footer } from "@/components/site/Footer";
 export const Route = createFileRoute("/refund-policy")({
   head: () => ({
     meta: [
-      { title: "Refund and Cancellation Policy | SnapCut AI" },
-      { name: "description", content: "SnapCut AI Refund and Cancellation Policy - Understand our refund and cancellation terms" },
+      { title: "Refund and Cancellation Policy | SnapCut" },
+      { name: "description", content: "SnapCut Refund and Cancellation Policy - Understand our refund and cancellation terms" },
     ],
   }),
   component: RefundPolicyPage,
@@ -23,7 +23,7 @@ function RefundPolicyPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">1. Overview</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            SnapCut AI provides AI-powered background removal services. We want you to be completely satisfied with our services.
+            SnapCut provides AI-powered background removal services. We want you to be completely satisfied with our services.
             This policy outlines our refund and cancellation terms.
           </p>
         </section>

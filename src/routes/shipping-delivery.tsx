@@ -6,8 +6,8 @@ import { Zap } from "lucide-react";
 export const Route = createFileRoute("/shipping-delivery")({
   head: () => ({
     meta: [
-      { title: "Shipping & Delivery | SnapCut AI" },
-      { name: "description", content: "SnapCut AI Shipping & Delivery Policy - Information about delivery of our digital services" },
+      { title: "Shipping & Delivery | SnapCut" },
+      { name: "description", content: "SnapCut Shipping & Delivery Policy - Information about delivery of our digital services" },
     ],
   }),
   component: ShippingDeliveryPage,
@@ -27,7 +27,7 @@ function ShippingDeliveryPage() {
             <p className="font-semibold">Instant Digital Delivery</p>
           </div>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            SnapCut AI is a Software as a Service (SaaS) platform. We provide digital services only.
+            SnapCut is a Software as a Service (SaaS) platform. We provide digital services only.
             There is no physical product to be shipped.
           </p>
         </section>

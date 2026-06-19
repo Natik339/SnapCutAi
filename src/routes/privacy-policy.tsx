@@ -5,8 +5,8 @@ import { Footer } from "@/components/site/Footer";
 export const Route = createFileRoute("/privacy-policy")({
   head: () => ({
     meta: [
-      { title: "Privacy Policy | SnapCut AI" },
-      { name: "description", content: "SnapCut AI Privacy Policy - Learn how we collect, use, and protect your data" },
+      { title: "Privacy Policy | SnapCut" },
+      { name: "description", content: "SnapCut Privacy Policy - Learn how we collect, use, and protect your data" },
     ],
   }),
   component: PrivacyPolicyPage,
@@ -23,7 +23,7 @@ function PrivacyPolicyPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">1. Introduction</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            Welcome to SnapCut AI. We are committed to protecting your personal information and your right to privacy.
+            Welcome to SnapCut. We are committed to protecting your personal information and your right to privacy.
             This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit our
             website and use our services.
           </p>

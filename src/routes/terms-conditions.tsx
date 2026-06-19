@@ -5,8 +5,8 @@ import { Footer } from "@/components/site/Footer";
 export const Route = createFileRoute("/terms-conditions")({
   head: () => ({
     meta: [
-      { title: "Terms and Conditions | SnapCut AI" },
-      { name: "description", content: "SnapCut AI Terms and Conditions - Understand your rights and obligations when using our services" },
+      { title: "Terms and Conditions | SnapCut" },
+      { name: "description", content: "SnapCut Terms and Conditions - Understand your rights and obligations when using our services" },
     ],
   }),
   component: TermsConditionsPage,
@@ -23,7 +23,7 @@ function TermsConditionsPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">1. Agreement to Terms</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            By accessing and using SnapCut AI, you agree to be bound by these Terms and Conditions.
+            By accessing and using SnapCut, you agree to be bound by these Terms and Conditions.
             If you do not agree to these terms, please do not use our services.
           </p>
         </section>
@@ -31,7 +31,7 @@ function TermsConditionsPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">2. Description of Service</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            SnapCut AI provides an AI-powered background removal service that allows users to upload images
+            SnapCut provides an AI-powered background removal service that allows users to upload images
             and receive processed images with transparent backgrounds.
           </p>
         </section>
@@ -57,7 +57,7 @@ function TermsConditionsPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">5. Intellectual Property</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            SnapCut AI retains all rights to our technology, trademarks, and service. You retain all rights to
+            SnapCut retains all rights to our technology, trademarks, and service. You retain all rights to
             the images you process, subject to our usage policies.
           </p>
         </section>
@@ -65,7 +65,7 @@ function TermsConditionsPage() {
         <section className="mb-8">
           <h2 className="mb-4 text-2xl font-semibold">6. Limitation of Liability</h2>
           <p className="mb-4 leading-relaxed text-muted-foreground">
-            SnapCut AI shall not be liable for any indirect, incidental, special, consequential, or punitive damages
+            SnapCut shall not be liable for any indirect, incidental, special, consequential, or punitive damages
             arising out of your use of our services.
           </p>
         </section>
@@ -83,7 +83,7 @@ function TermsConditionsPage() {
           <p className="mb-4 leading-relaxed text-muted-foreground">
             For any questions about these Terms and Conditions, please contact:
           </p>
-          <p className="mb-2 font-semibold">SnapCut AI</p>
+          <p className="mb-2 font-semibold">SnapCut</p>
           <p className="mb-2">Email: support@snapcut.ai</p>
         </section>
       </main>
