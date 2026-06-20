@@ -31,7 +31,6 @@ import { useAuth } from "@/lib/auth";
 import { useHistory } from "@/hooks/useHistory";
 import { HistoryGrid } from "@/components/HistoryGrid";
 import { downloadImage, getHistoryItemName } from "@/lib/history-utils";
-import { getBackgroundRemovalWebhookUrl } from "@/lib/public-config";
 import type { HistoryInsert } from "@/types/history";
 
 
@@ -247,16 +246,11 @@ function Hero({ addToHistory, downloadImage, incrementDownloadCount }: HeroProps
 
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 45000);
-      const backgroundRemovalWebhookUrl = getBackgroundRemovalWebhookUrl();
-
-      if (!backgroundRemovalWebhookUrl) {
-        throw new Error("Background removal webhook is not configured.");
-      }
 
       // Send to webhook
       let response: Response;
       try {
-        response = await fetch(backgroundRemovalWebhookUrl, {
+        response = await fetch("https://natikg16.app.n8n.cloud/webhook/remove-background", {
           method: "POST",
           body: formData,
           signal: controller.signal,

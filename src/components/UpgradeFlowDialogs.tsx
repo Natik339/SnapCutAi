@@ -3,7 +3,6 @@ import { CheckCircle2, CreditCard, Crown, ShieldCheck, Sparkles, Zap } from "luc
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/lib/auth";
-import { getPublicAppUrl, getPurchaseWebhookUrl } from "@/lib/public-config";
 import { upgradeToPro } from "@/lib/supabase-utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -40,6 +39,8 @@ const proHighlights = [
     description: "Unlock up to 5K resolution exports and premium support.",
   },
 ];
+
+const PURCHASE_WEBHOOK_URL = "https://natikg16.app.n8n.cloud/webhook/purchase-made";
 
 export function AuthRequiredDialog({
   open,
@@ -137,14 +138,6 @@ export function UpgradeDialog({
     paymentId: string;
     upgradedProfile: Awaited<ReturnType<typeof upgradeToPro>>;
   }) => {
-    const purchaseWebhookUrl = getPurchaseWebhookUrl();
-    const publicAppUrl = getPublicAppUrl();
-
-    if (!purchaseWebhookUrl) {
-      console.warn("[purchase-webhook] Skipping webhook because VITE_PURCHASE_WEBHOOK_URL is not configured.");
-      return;
-    }
-
     const payload = {
       event: {
         name: "purchase_made",
@@ -181,7 +174,7 @@ export function UpgradeDialog({
       },
       platform: {
         product_name: "SnapCut",
-        website_url: publicAppUrl || null,
+        website_url: typeof window !== "undefined" ? window.location.origin : null,
         current_page: typeof window !== "undefined" ? window.location.href : null,
       },
       profile_snapshot: {
@@ -191,7 +184,7 @@ export function UpgradeDialog({
       },
     };
 
-    await fetch(purchaseWebhookUrl, {
+    await fetch(PURCHASE_WEBHOOK_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
