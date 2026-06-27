@@ -250,7 +250,7 @@ function Hero({ addToHistory, downloadImage, incrementDownloadCount }: HeroProps
       // Send to webhook
       let response: Response;
       try {
-        response = await fetch("https://natikg16.app.n8n.cloud/webhook/remove-background", {
+        response = await fetch("https://natikg161b.app.n8n.cloud/webhook/remove-background", {
           method: "POST",
           body: formData,
           signal: controller.signal,
