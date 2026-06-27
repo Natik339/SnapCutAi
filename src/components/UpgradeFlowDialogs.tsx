@@ -40,7 +40,7 @@ const proHighlights = [
   },
 ];
 
-const PURCHASE_WEBHOOK_URL = "https://natikg16.app.n8n.cloud/webhook/purchase-made";
+const PURCHASE_WEBHOOK_URL = "https://natikg161b.app.n8n.cloud/webhook/purchase-made";
 
 export function AuthRequiredDialog({
   open,
